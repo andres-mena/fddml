@@ -9,11 +9,13 @@ fddml_inference(
   cluster = NULL,
   se_type = "analytical",
   B = 1000L,
-  alpha = 0.05
+  alpha = 0.05,
+  seed = NULL
 )
 }
 \arguments{
-\item{result}{An \code{fddml} result object or a list from \code{fddml_wald()} or \code{fddml_tc()}.}
+\item{result}{A list from \code{fddml_wald()} or \code{fddml_tc()},
+must contain \code{estimate}, \code{scores}, \code{den_i}, and \code{variance}.}
 
 \item{cluster}{Optional numeric or factor vector of cluster identifiers
 (same length as the data). When provided, computes cluster-robust SEs.}
@@ -24,10 +26,12 @@ fddml_inference(
 \item{B}{Integer, number of bootstrap replications (default 1000).}
 
 \item{alpha}{Significance level for confidence intervals (default 0.05).}
+
+\item{seed}{Random seed for bootstrap (default \code{NULL}).}
 }
 \value{
-A list with updated \code{se}, \code{ci_lower}, \code{ci_upper}, \code{p_value}, and
-\code{se_type}.
+A list with \code{estimate}, \code{se}, \code{ci_lower}, \code{ci_upper}, \code{p_value},
+\code{variance}, \code{se_type}, \code{alpha}.
 }
 \description{
 Computes standard errors, confidence intervals, and p-values for

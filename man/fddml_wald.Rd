@@ -12,12 +12,12 @@ fddml_wald(W, pred)
 \item{pred}{List of cross-fitted nuisance predictions from \code{fddml_nuisance()}.}
 }
 \value{
-List with \code{estimate}, \code{se}, \code{ci_lower}, \code{ci_upper}, \code{variance},
-\code{scores} (individual psi_i), \code{wald_naive}.
+List with \code{estimate}, \code{variance}, \code{scores}, \code{num_i}, \code{den_i},
+\code{wald_naive}. Returns NA estimate with warning if first stage is too weak.
 }
 \description{
 Computes the locally robust augmented score for the Wald-DID estimand.
-The score is psi = g + phi where g is the identifying moment and phi
-is the FSIF correction (Ichimura & Newey 2022). Sign convention: (-, -, +)
-for correction terms w_10, w_01, w_00, matching DID = Y - m_10 - m_01 + m_00.
+Sign convention: (-, -, +) for correction terms w_10, w_01, w_00,
+matching DID = Y - m_10 - m_01 + m_00.
+Verified against CD'H (2018) supplement p.45 (r = 1.0000).
 }

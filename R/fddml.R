@@ -90,13 +90,14 @@ fddml <- function(Y, D, G, Ti, X,
   trim_info <- fddml_trim(nuis$pG_raw, DID_D = DID_D_hat,
                            method = trim, alpha_fixed = trim_alpha)
 
-  # Apply trimming to propensity
+  # Apply trimming to propensity — preserve raw for diagnostics
   pT <- mean(Ti)
-  nuis$pG_raw <- trim_info$pG_trimmed
-  nuis$pi_11 <- nuis$pG_raw * pT
-  nuis$pi_10 <- nuis$pG_raw * (1 - pT)
-  nuis$pi_01 <- (1 - nuis$pG_raw) * pT
-  nuis$pi_00 <- (1 - nuis$pG_raw) * (1 - pT)
+  nuis$pG_raw_original <- nuis$pG_raw
+  pG_trimmed <- trim_info$pG_trimmed
+  nuis$pi_11 <- pG_trimmed * pT
+  nuis$pi_10 <- pG_trimmed * (1 - pT)
+  nuis$pi_01 <- (1 - pG_trimmed) * pT
+  nuis$pi_00 <- (1 - pG_trimmed) * (1 - pT)
 
   # Step 3: Estimation
   if (verbose) message("Step 3/4: Computing estimators...")
@@ -105,7 +106,7 @@ fddml <- function(Y, D, G, Ti, X,
 
   if (estimand %in% c("wald", "both")) {
     wald_res <- fddml_wald(W, nuis)
-    wald_inf <- fddml_inference(wald_res, cluster = cluster, se_type = se_type, B = B)
+    wald_inf <- fddml_inference(wald_res, cluster = cluster, se_type = se_type, B = B, seed = seed)
     estimates <- rbind(estimates, data.frame(
       estimand = "DML-Wald",
       estimate = wald_inf$estimate,
@@ -120,7 +121,7 @@ fddml <- function(Y, D, G, Ti, X,
 
   if (estimand %in% c("tc", "both")) {
     tc_res <- fddml_tc(W, nuis)
-    tc_inf <- fddml_inference(tc_res, cluster = cluster, se_type = se_type, B = B)
+    tc_inf <- fddml_inference(tc_res, cluster = cluster, se_type = se_type, B = B, seed = seed)
     estimates <- rbind(estimates, data.frame(
       estimand = "DML-TC",
       estimate = tc_inf$estimate,
@@ -146,7 +147,7 @@ fddml <- function(Y, D, G, Ti, X,
     p = p,
     settings = list(
       estimand = estimand, method = method, K = K,
-      trim = trim, se_type = se_type, B = B
+      trim = trim, trim_alpha = trim_alpha, se_type = se_type, B = B, seed = seed
     )
   )
   class(result) <- "fddml"

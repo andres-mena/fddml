@@ -30,7 +30,7 @@ fddml_nuisance(
 \item{method}{Character string (\code{"lasso"}, \code{"rf"}, \code{"nn"}, \code{"ols"}) or a
 function \code{f(Y_train, X_train, X_predict)} returning predicted values.}
 
-\item{K}{Integer, number of cross-fitting folds (default 5).}
+\item{K}{Integer >= 2, number of cross-fitting folds (default 5).}
 
 \item{estimand}{Which estimand to prepare nuisance for: \code{"wald"}, \code{"tc"},
 or \code{"both"} (default).}
@@ -38,21 +38,24 @@ or \code{"both"} (default).}
 \item{seed}{Random seed for fold assignment (default \code{NULL}).}
 }
 \value{
-A list with cross-fitted predictions for every observation:
-\describe{
-\item{m_Y_10, m_Y_01, m_Y_00}{Conditional outcome means E[Y|G=g,T=t,X].}
-\item{m_D_10, m_D_01, m_D_00}{Conditional treatment means E[D|G=g,T=t,X].}
-\item{pG_raw}{Propensity score Pr(G=1|X).}
-\item{pi_11, pi_10, pi_01, pi_00}{Joint cell probabilities.}
-\item{mu_Y_101, ..., mu_Y_000}{Treatment-conditional means (TC only).}
-\item{pi_101, ..., pi_000}{Treatment-conditional propensities (TC only).}
-\item{folds}{Integer vector of fold assignments.}
-}
+A list with cross-fitted predictions for every observation.
+Entries may contain NA where estimation failed (small cells, collinearity).
 }
 \description{
 Estimates all nuisance functions required for DML-Wald and DML-TC using
 K-fold cross-fitting. Supports Lasso, Random Forest, neural networks,
 OLS, or a user-supplied function.
+}
+\details{
+Joint cell probabilities are computed as Pr(G=g|X) * Pr(T=t),
+assuming time period T is independent of group and covariates.
+This holds in repeated cross-section designs where T indexes calendar
+time. It does NOT hold in balanced panel data.
+
+When a cell-fold intersection has fewer than 10 training observations,
+the function returns NA for those predictions (never imputes cell means).
+Downstream score functions will produce NA estimates for observations
+with missing nuisance predictions.
 }
 \examples{
 \donttest{

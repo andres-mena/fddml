@@ -9,15 +9,14 @@ fddml_tc(W, pred)
 \arguments{
 \item{W}{Data frame with columns Y, D, G, Ti.}
 
-\item{pred}{List of cross-fitted nuisance predictions from \code{\link[=fddml_nuisance]{fddml_nuisance()}}
+\item{pred}{List of cross-fitted nuisance predictions from \code{fddml_nuisance()}
 with \code{estimand = "tc"} or \code{"both"}.}
 }
 \value{
-List with \code{estimate}, \code{se}, \code{ci_lower}, \code{ci_upper}, \code{variance},
-\code{scores} (individual psi_i).
+List with \code{estimate}, \code{variance}, \code{scores}, \code{num_i}, \code{den_i}.
+Returns NA estimate with warning if first stage is too weak.
 }
 \description{
 Computes the locally robust augmented score for the Time-Corrected estimand.
-Equivalent to CD'H (2018) supplement p.45, psi*_TC(g), up to normalization.
-Requires treatment-conditional nuisance functions in \code{pred}.
+Equivalent to CD'H (2018) supplement p.45 up to normalization.
 }

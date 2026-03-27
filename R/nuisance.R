@@ -4,6 +4,17 @@
 #' K-fold cross-fitting. Supports Lasso, Random Forest, neural networks,
 #' OLS, or a user-supplied function.
 #'
+#' @details
+#' Joint cell probabilities are computed as Pr(G=g|X) * Pr(T=t),
+#' assuming time period T is independent of group and covariates.
+#' This holds in repeated cross-section designs where T indexes calendar
+#' time. It does NOT hold in balanced panel data.
+#'
+#' When a cell-fold intersection has fewer than 10 training observations,
+#' the function returns NA for those predictions (never imputes cell means).
+#' Downstream score functions will produce NA estimates for observations
+#' with missing nuisance predictions.
+#'
 #' @param Y Numeric vector of outcomes.
 #' @param D Numeric vector of treatment.
 #' @param G Binary vector of group assignment (0/1).
@@ -11,21 +22,13 @@
 #' @param X Numeric matrix of covariates.
 #' @param method Character string (`"lasso"`, `"rf"`, `"nn"`, `"ols"`) or a
 #'   function `f(Y_train, X_train, X_predict)` returning predicted values.
-#' @param K Integer, number of cross-fitting folds (default 5).
+#' @param K Integer >= 2, number of cross-fitting folds (default 5).
 #' @param estimand Which estimand to prepare nuisance for: `"wald"`, `"tc"`,
 #'   or `"both"` (default).
 #' @param seed Random seed for fold assignment (default `NULL`).
 #'
-#' @return A list with cross-fitted predictions for every observation:
-#'   \describe{
-#'     \item{m_Y_10, m_Y_01, m_Y_00}{Conditional outcome means E\[Y|G=g,T=t,X\].}
-#'     \item{m_D_10, m_D_01, m_D_00}{Conditional treatment means E\[D|G=g,T=t,X\].}
-#'     \item{pG_raw}{Propensity score Pr(G=1|X).}
-#'     \item{pi_11, pi_10, pi_01, pi_00}{Joint cell probabilities.}
-#'     \item{mu_Y_101, ..., mu_Y_000}{Treatment-conditional means (TC only).}
-#'     \item{pi_101, ..., pi_000}{Treatment-conditional propensities (TC only).}
-#'     \item{folds}{Integer vector of fold assignments.}
-#'   }
+#' @return A list with cross-fitted predictions for every observation.
+#'   Entries may contain NA where estimation failed (small cells, collinearity).
 #'
 #' @examples
 #' \donttest{
@@ -45,6 +48,16 @@ fddml_nuisance <- function(Y, D, G, Ti, X,
                             K = 5L,
                             estimand = "both",
                             seed = NULL) {
+  estimand <- match.arg(estimand, c("wald", "tc", "both"))
+  if (is.character(method)) {
+    method <- match.arg(method, c("lasso", "rf", "nn", "ols"))
+  } else if (!is.function(method)) {
+    stop("`method` must be a character string or a function.", call. = FALSE)
+  }
+  if (!is.numeric(K) || length(K) != 1 || K < 2L)
+    stop("`K` must be a single integer >= 2.", call. = FALSE)
+  K <- as.integer(K)
+
   X <- as.matrix(X)
   N <- length(Y)
   .validate_inputs(Y, D, G, Ti, X)
@@ -59,7 +72,7 @@ fddml_nuisance <- function(Y, D, G, Ti, X,
     "00" = which(G == 0 & Ti == 0)
   )
 
-  # Initialize prediction vectors
+  # Initialize prediction vectors as NA — never impute
   m_Y <- m_D <- list()
   for (key in names(cells)) {
     m_Y[[key]] <- rep(NA_real_, N)
@@ -73,12 +86,7 @@ fddml_nuisance <- function(Y, D, G, Ti, X,
       train_k <- idx[folds[idx] != k]
       pred_k <- which(folds == k)
 
-      if (length(train_k) < 5) {
-        m_Y[[key]][pred_k] <- mean(Y[idx])
-        m_D[[key]][pred_k] <- mean(D[idx])
-        next
-      }
-
+      # .fit_nuisance_cell returns NA when cell too small or estimation fails
       m_Y[[key]][pred_k] <- .fit_nuisance_cell(Y[train_k], X[train_k, , drop = FALSE],
                                                  X[pred_k, , drop = FALSE], method)
       m_D[[key]][pred_k] <- .fit_nuisance_cell(D[train_k], X[train_k, , drop = FALSE],
@@ -97,7 +105,8 @@ fddml_nuisance <- function(Y, D, G, Ti, X,
   }
   pG_raw <- pmax(pmin(pG_raw, 0.999), 0.001)
 
-  # Joint cell probabilities
+  # Joint cell probabilities: pi_{gt}(X) = Pr(G=g|X) * Pr(T=t)
+  # Assumes T independent of (G, X) — valid in repeated cross-sections
   pi_11 <- pG_raw * pT
   pi_10 <- pG_raw * (1 - pT)
   pi_01 <- (1 - pG_raw) * pT
@@ -110,6 +119,16 @@ fddml_nuisance <- function(Y, D, G, Ti, X,
     pi_11 = pi_11, pi_10 = pi_10, pi_01 = pi_01, pi_00 = pi_00,
     folds = folds
   )
+
+  # Warn about NAs in core predictions
+  core_preds <- c("m_Y_10", "m_Y_01", "m_Y_00", "m_D_10", "m_D_01", "m_D_00", "pG_raw")
+  na_counts <- vapply(result[core_preds], function(x) sum(is.na(x)), integer(1L))
+  if (any(na_counts > 0)) {
+    bad <- core_preds[na_counts > 0]
+    warning("Nuisance predictions contain NA in: ",
+            paste(bad, collapse = ", "),
+            ". Check cell sizes and method convergence.", call. = FALSE)
+  }
 
   # TC-specific: treatment-conditional expectations in control group
   if (estimand %in% c("tc", "both")) {
@@ -131,12 +150,8 @@ fddml_nuisance <- function(Y, D, G, Ti, X,
         train_k <- idx[folds[idx] != k]
         pred_k <- which(folds == k)
 
-        if (length(train_k) < 5) {
-          result[[mu_key]][pred_k] <- if (length(idx) > 0) mean(Y[idx]) else 0
-          result[[pi_key]][pred_k] <- max(length(idx) / N, 0.001)
-          next
-        }
-
+        # mu_Y_{dgt}(X_i) trained on (d,0,t) cell, predicted for ALL obs.
+        # Cell-membership indicators in the score zero out irrelevant terms.
         result[[mu_key]][pred_k] <- .fit_nuisance_cell(
           Y[train_k], X[train_k, , drop = FALSE],
           X[pred_k, , drop = FALSE], method)

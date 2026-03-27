@@ -15,7 +15,9 @@ plot.fddml <- function(x, type = "propensity", ...) {
     stop("Install 'ggplot2' for plotting.", call. = FALSE)
 
   if (type == "propensity") {
-    df <- data.frame(pG = x$nuisance$pG_raw)
+    pG_display <- if (!is.null(x$nuisance$pG_raw_original))
+      x$nuisance$pG_raw_original else x$nuisance$pG_raw
+    df <- data.frame(pG = pG_display)
     p <- ggplot2::ggplot(df, ggplot2::aes(x = pG)) +
       ggplot2::geom_histogram(fill = "#012169", color = "white",
                                bins = 40, alpha = 0.8) +

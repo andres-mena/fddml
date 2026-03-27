@@ -4,52 +4,89 @@
 #' DML-Wald and DML-TC estimates. Supports analytical (i.i.d.), clustered,
 #' and multiplier bootstrap variance estimation.
 #'
-#' @param result An `fddml` result object or a list from \code{fddml_wald()} or \code{fddml_tc()}.
+#' @param result A list from \code{fddml_wald()} or \code{fddml_tc()},
+#'   must contain `estimate`, `scores`, `den_i`, and `variance`.
 #' @param cluster Optional numeric or factor vector of cluster identifiers
 #'   (same length as the data). When provided, computes cluster-robust SEs.
 #' @param se_type Character: `"analytical"` (default), `"cluster"` (requires
 #'   `cluster`), or `"bootstrap"`.
 #' @param B Integer, number of bootstrap replications (default 1000).
 #' @param alpha Significance level for confidence intervals (default 0.05).
+#' @param seed Random seed for bootstrap (default `NULL`).
 #'
-#' @return A list with updated `se`, `ci_lower`, `ci_upper`, `p_value`, and
-#'   `se_type`.
+#' @return A list with `estimate`, `se`, `ci_lower`, `ci_upper`, `p_value`,
+#'   `variance`, `se_type`, `alpha`.
 #'
 #' @export
 fddml_inference <- function(result, cluster = NULL, se_type = "analytical",
-                             B = 1000L, alpha = 0.05) {
+                             B = 1000L, alpha = 0.05, seed = NULL) {
+  se_type <- match.arg(se_type, c("analytical", "cluster", "bootstrap"))
+
+  # Validate result object
+  if (is.null(result$den_i)) stop("`result` must contain `den_i`.", call. = FALSE)
+  if (is.null(result$scores)) stop("`result` must contain `scores`.", call. = FALSE)
+
+  theta_hat <- result$estimate
+  if (!is.finite(theta_hat)) {
+    return(list(estimate = NA_real_, se = NA_real_, ci_lower = NA_real_,
+                ci_upper = NA_real_, p_value = NA_real_, variance = NA_real_,
+                se_type = se_type, alpha = alpha))
+  }
+
   psi_i <- result$scores
   N <- length(psi_i)
-  theta_hat <- result$estimate
-  G_hat <- -mean(result$den_i)
+  G_hat <- -mean(result$den_i, na.rm = TRUE)
   z_alpha <- stats::qnorm(1 - alpha / 2)
 
-  if (se_type == "cluster" || !is.null(cluster)) {
-    if (is.null(cluster)) stop("`cluster` must be provided for se_type = 'cluster'.", call. = FALSE)
-    if (length(cluster) != N) stop("`cluster` must have the same length as the data.", call. = FALSE)
+  # Resolve cluster vs se_type conflict
 
-    # Cluster-robust variance: V = G^{-2} * (1/N^2) * sum_s (sum_{i in s} psi_i)^2
-    cluster_sums <- tapply(psi_i, cluster, sum)
-    V_hat <- sum(cluster_sums^2) / (N^2 * G_hat^2)
+  if (!is.null(cluster) && se_type != "cluster") {
+    message("Note: `cluster` provided; switching to cluster-robust SEs.")
+    se_type <- "cluster"
+  }
+
+  if (se_type == "cluster") {
+    if (is.null(cluster))
+      stop("`cluster` must be provided for se_type = 'cluster'.", call. = FALSE)
+    if (length(cluster) != N)
+      stop("`cluster` must have the same length as the data.", call. = FALSE)
+
+    # Cluster-robust variance with S/(S-1) finite-sample correction
+    cluster_sums <- tapply(psi_i, cluster, function(x) sum(x, na.rm = TRUE))
+    S <- length(cluster_sums)
+    V_hat <- (S / (S - 1)) * sum(cluster_sums^2) / (N^2 * G_hat^2)
     se_hat <- sqrt(V_hat)
-    se_type_out <- "cluster"
 
   } else if (se_type == "bootstrap") {
-    # Multiplier bootstrap: resample scores with Rademacher weights
+    # Score-based multiplier bootstrap (Chernozhukov et al. 2018, Section 4.2):
+    # theta_b = theta_hat + (1/N) * sum(w_b * psi_i / G_hat)
+    # where w_b are i.i.d. Rademacher weights.
+    if (!is.null(seed)) {
+      old_seed <- if (exists(".Random.seed", envir = .GlobalEnv))
+        get(".Random.seed", envir = .GlobalEnv) else NULL
+      on.exit({
+        if (!is.null(old_seed))
+          assign(".Random.seed", old_seed, envir = .GlobalEnv)
+        else
+          rm(".Random.seed", envir = .GlobalEnv)
+      })
+      set.seed(seed)
+    }
+    ok <- is.finite(psi_i)
+    psi_ok <- psi_i[ok]
+    N_ok <- length(psi_ok)
     boot_theta <- numeric(B)
     for (b in seq_len(B)) {
-      w_b <- sample(c(-1, 1), N, replace = TRUE)
-      boot_theta[b] <- theta_hat + sum(w_b * psi_i) / (N * G_hat)
+      w_b <- sample(c(-1, 1), N_ok, replace = TRUE)
+      boot_theta[b] <- theta_hat + sum(w_b * psi_ok) / (N_ok * G_hat)
     }
     se_hat <- stats::sd(boot_theta)
     V_hat <- se_hat^2
-    se_type_out <- "bootstrap"
 
   } else {
-    # Analytical (i.i.d.) — already computed in scores
+    # Analytical (i.i.d.)
     V_hat <- result$variance
     se_hat <- sqrt(V_hat / N)
-    se_type_out <- "analytical"
   }
 
   ci_lower <- theta_hat - z_alpha * se_hat
@@ -63,7 +100,7 @@ fddml_inference <- function(result, cluster = NULL, se_type = "analytical",
     ci_upper = ci_upper,
     p_value = p_value,
     variance = V_hat,
-    se_type = se_type_out,
+    se_type = se_type,
     alpha = alpha
   )
 }

@@ -85,7 +85,7 @@ test_that("print and summary methods work", {
                K = 2, trim = "none", seed = 1)
 
   expect_output(print(fit), "Fuzzy DID")
-  expect_output(summary(fit), "Summary")
+  expect_output(print(summary(fit)), "Summary")
 })
 
 test_that("tidy returns correct columns", {

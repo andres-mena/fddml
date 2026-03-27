@@ -3,6 +3,7 @@
 S3method(confint,fddml)
 S3method(plot,fddml)
 S3method(print,fddml)
+S3method(print,summary.fddml)
 S3method(summary,fddml)
 export(fddml)
 export(fddml_inference)
