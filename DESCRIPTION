@@ -1,0 +1,34 @@
+Package: fddml
+Title: Fuzzy Difference-in-Differences with Machine Learning
+Version: 0.1.0
+Authors@R: c(
+    person("Andres", "Mena", email = "andres_mena@brown.edu",
+           role = c("aut", "cre"),
+           comment = c(ORCID = ""))
+  )
+Description: Doubly robust GMM estimators for fuzzy difference-in-differences
+    designs with high-dimensional covariates. Implements the DML-Wald and
+    DML-TC estimators of Mena (2026) with cross-fitted nuisance estimation
+    via Lasso, Random Forest, neural networks, or OLS. Includes optimal
+    propensity score trimming, clustered standard errors, and a bundled
+    empirical application to the INPRES school construction program.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends: R (>= 4.0.0)
+Imports:
+    glmnet (>= 4.0),
+    stats,
+    ggplot2 (>= 3.4.0)
+Suggests:
+    randomForest,
+    nnet,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/andres-mena/fddml
+BugReports: https://github.com/andres-mena/fddml/issues
