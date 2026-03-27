@@ -3,5 +3,6 @@ utils::globalVariables(c(
   "m_Y_10", "m_Y_01", "m_Y_00",
   "m_D_10", "m_D_01", "m_D_00",
   "pG_raw", "estimand", "estimate", "se",
-  "component", "value", "n_label", "alpha"
+  "component", "value", "n_label", "alpha",
+  "pG", "score"
 ))

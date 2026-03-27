@@ -21,7 +21,7 @@ print.fddml <- function(x, digits = 4, ...) {
 
 #' @export
 summary.fddml <- function(object, ...) {
-  cat("\n  Fuzzy DID with Machine Learning — Summary\n")
+  cat("\n  Fuzzy DID with Machine Learning - Summary\n")
   cat("  ", paste(rep("-", 50), collapse = ""), "\n")
   cat("  Call: "); print(object$call)
   cat("\n  Sample: N =", object$N, ", p =", object$p, "\n")

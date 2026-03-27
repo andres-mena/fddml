@@ -18,8 +18,8 @@
 #'
 #' @return A list with cross-fitted predictions for every observation:
 #'   \describe{
-#'     \item{m_Y_10, m_Y_01, m_Y_00}{Conditional outcome means E[Y|G=g,T=t,X].}
-#'     \item{m_D_10, m_D_01, m_D_00}{Conditional treatment means E[D|G=g,T=t,X].}
+#'     \item{m_Y_10, m_Y_01, m_Y_00}{Conditional outcome means E\[Y|G=g,T=t,X\].}
+#'     \item{m_D_10, m_D_01, m_D_00}{Conditional treatment means E\[D|G=g,T=t,X\].}
 #'     \item{pG_raw}{Propensity score Pr(G=1|X).}
 #'     \item{pi_11, pi_10, pi_01, pi_00}{Joint cell probabilities.}
 #'     \item{mu_Y_101, ..., mu_Y_000}{Treatment-conditional means (TC only).}

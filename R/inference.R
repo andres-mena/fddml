@@ -4,7 +4,7 @@
 #' DML-Wald and DML-TC estimates. Supports analytical (i.i.d.), clustered,
 #' and multiplier bootstrap variance estimation.
 #'
-#' @param result An `fddml` result object or a list from [fddml_wald()]/[fddml_tc()].
+#' @param result An `fddml` result object or a list from \code{fddml_wald()} or \code{fddml_tc()}.
 #' @param cluster Optional numeric or factor vector of cluster identifiers
 #'   (same length as the data). When provided, computes cluster-robust SEs.
 #' @param se_type Character: `"analytical"` (default), `"cluster"` (requires

@@ -6,7 +6,7 @@
 #' for correction terms w_10, w_01, w_00, matching DID = Y - m_10 - m_01 + m_00.
 #'
 #' @param W Data frame with columns Y, D, G, Ti.
-#' @param pred List of cross-fitted nuisance predictions from [fddml_nuisance()].
+#' @param pred List of cross-fitted nuisance predictions from \code{fddml_nuisance()}.
 #'
 #' @return List with `estimate`, `se`, `ci_lower`, `ci_upper`, `variance`,
 #'   `scores` (individual psi_i), `wald_naive`.
